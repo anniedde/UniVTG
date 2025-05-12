@@ -76,14 +76,14 @@ def vid2clip(model, vid_path, output_file,
     print(f"Total number of frames: {totatl_num_frames}")
     return vid_features
 
-def txt2clip(model, text, output_file):
+def txt2clip(model, text, output_file, save_name='txt.npz'):
     device_id = next(model.parameters()).device
     encoded_texts = clip.tokenize(text).to(device_id)
     text_feature = model.encode_text(encoded_texts)['last_hidden_state']
     valid_lengths = (encoded_texts != 0).sum(1).tolist()[0]
     text_feature = text_feature[0, :valid_lengths].detach().cpu().numpy()
     
-    np.savez(os.path.join(output_file, 'txt.npz'), features=text_feature)
+    np.savez(os.path.join(output_file, save_name), features=text_feature)
     return text_feature
     
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ class BaseOptions(object):
         parser = argparse.ArgumentParser()
         # * Running configs
         parser.add_argument("--dset_type", type=str, choices=["mr", "hl", "vs", "vlp"])    # moment retrieval, highlight detection, and video summarization
-        parser.add_argument("--dset_name", type=str, choices=["qvhighlights", "charades", "anet", "tvsum", "youtube", "summe", "ego4d", "qfvs", "video2gif", "coin", "hacs", "vlp", "videocc", "tacos"])
+        parser.add_argument("--dset_name", type=str, choices=["qvhighlights", "charades", "anet", "tvsum", "youtube", "summe", "ego4d", "qfvs", "video2gif", "coin", "hacs", "vlp", "videocc", "tacos", "scanqa"])
         parser.add_argument("--domain_name", type=str, default=None)
         parser.add_argument("--model_id", type=str, default="moment_detr")
         parser.add_argument("--exp_id", type=str, default="debug", help="id of this run, required at training")
@@ -239,8 +239,8 @@ class BaseOptions(object):
                 if arg not in ["results_root", "num_workers", "nms_thd", "debug",  "max_before_nms", "max_after_nms"
                                "max_pred_l", "min_pred_l", "gpu_id",
                                "resume", "resume_all", "no_sort_results",
-                               "eval_path", "eval_split_name"]:
-                            #    "dset_name", "v_feat_dirs", "t_feat_dir"]:
+                               "eval_path", "eval_split_name",
+                                "dset_name", "v_feat_dirs", "t_feat_dir"]:
                     setattr(opt, arg, saved_options[arg])
             # opt.no_core_driver = True
             if opt.eval_results_dir is not None:

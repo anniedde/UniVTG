@@ -96,6 +96,43 @@ def compute_mr_results(model, eval_loader, opt, epoch_i=None, criterion=None, tb
 
     mr_res = []
     for batch in tqdm(eval_loader, desc="compute st ed scores"):
+        """
+        print("=" * 50)
+        print("Inspecting batch...")
+
+        # Meta info (usually qid, vid, etc.)
+        query_meta = batch[0]
+        print(f"query_meta (len={len(query_meta)}): {query_meta[0] if len(query_meta) > 0 else 'Empty'}")
+
+        # Model inputs (features + masks)
+        model_inputs = batch[1]
+        
+        # --- query_feat ---
+        query_feat = model_inputs["query_feat"]
+        print("\nquery_feat:")
+        print(f"  type: {type(query_feat)}")
+        print(f"  feat shape: {query_feat[0].shape}")  # tensor with padded queries
+        print(f"  mask shape: {query_feat[1].shape}")  # mask tensor
+
+        # --- video_feat ---
+        video_feat = model_inputs["video_feat"]
+        print("\nvideo_feat:")
+        print(f"  type: {type(video_feat)}")
+        print(f"  feat shape: {video_feat[0].shape}")  # padded video features
+        print(f"  mask shape: {video_feat[1].shape}")  # mask tensor
+
+        # --- timestamp ---
+        if "timestamp" in model_inputs:
+            print("\ntimestamp:")
+            print(f"  feat shape: {model_inputs['timestamp'][0].shape}")
+            print(f"  mask shape: {model_inputs['timestamp'][1].shape}")
+
+        # --- timestamp_window ---
+        if "timestamp_window" in model_inputs:
+            print("\ntimestamp_window:")
+            print(f"  shape: {model_inputs['timestamp_window'][0].shape}")
+
+        """
         query_meta = batch[0]
         model_inputs, targets = prepare_batch_inputs_mr(batch[1], opt.device, non_blocking=opt.pin_memory)
         outputs = model(**model_inputs)
@@ -115,7 +152,11 @@ def compute_mr_results(model, eval_loader, opt, epoch_i=None, criterion=None, tb
             if opt.model_id not in ['moment_detr']: # dense regression.
                 start_spans = targets['timestamp']
                 pred_spans = start_spans + pred_spans
-                mask = targets['timestamp_mask'].bool()
+                # Use:
+                if targets is not None and 'timestamp_mask' in targets:
+                    mask = targets['timestamp_mask'].bool()
+                else:
+                    mask = torch.ones_like(scores, dtype=torch.bool)
                 scores[~mask] = 0
                 # if opt.eval_mode == 'v4':
                 #     _mask = targets['timestamp_window'].bool()
@@ -236,7 +277,7 @@ def start_inference():
         q_feat_dir=opt.t_feat_dir,
         v_feat_dim=opt.v_feat_dim,
         q_feat_dim=opt.t_feat_dim,
-        q_feat_type="last_hidden_state",
+        q_feat_type="features",
         max_q_l=opt.max_q_l,
         max_v_l=opt.max_v_l,
         ctx_mode=opt.ctx_mode,
@@ -245,7 +286,7 @@ def start_inference():
         normalize_t=not opt.no_norm_tfeat,
         clip_len=opt.clip_length,
         max_windows=opt.max_windows,
-        load_labels=True,  # opt.eval_split_name == "val",
+        load_labels=False,  # opt.eval_split_name == "val",
         span_loss_type=opt.span_loss_type,
         txt_drop_ratio=0,
         use_cache=opt.use_cache,

@@ -112,7 +112,19 @@ def forward(model, save_dir, query):
     
     hl_res = convert_to_hms(torch.argmax(pred_saliency) * clip_len)
     hl_response = f"The Top-1 highlight is: {hl_res}"
-    return '\n'.join([q_response, mr_response, hl_response])
+
+    top5_preds = []
+    for i, window in enumerate(top5_windows):
+        window_str = " - ".join([convert_to_hms(int(x)) for x in window])
+        score = top5_values[i].item()
+        top5_preds.append(f"Rank {i+1}: {window_str} (Confidence: {score:.4f})")
+
+    top5_response = "Top-5 intervals:\n" + "\n".join(top5_preds)
+
+    # Combine everything to return
+    return '\n'.join([q_response, mr_response, hl_response, top5_response])
+    
+    #return '\n'.join([q_response, mr_response, hl_response])
     
 def extract_vid(vid_path, state):
     history = state['messages']

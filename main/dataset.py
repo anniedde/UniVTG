@@ -390,7 +390,7 @@ class DatasetVLP(Dataset):
         return torch.from_numpy(v_feat)  # (Lv, D)
 
 class DatasetMR(Dataset):
-    Q_FEAT_TYPES = ["pooler_output", "last_hidden_state"]
+    Q_FEAT_TYPES = ["pooler_output", "last_hidden_state", "features"]
     """One line in data loaded from data_path."
     {
       "qid": 7803,
@@ -502,6 +502,7 @@ class DatasetMR(Dataset):
 
         if 'test' in self.data_path and 'qvhighlights' in self.dset_name:
             meta["relevant_windows"] = [[0, 150]]
+        """
         relevant_windows = torch.Tensor(meta["relevant_windows"])
 
         # assign the nearest window for each timestamp i.e., qvhighlights.
@@ -530,7 +531,7 @@ class DatasetMR(Dataset):
             idx = int(meta['relevant_windows'][0][0] / self.clip_len)
             idx = max(0, min(idx, ctx_l-1))
             model_inputs["timestamp_window"][idx] = 1
-
+        """
         if self.use_tef:
             tef_st = torch.arange(0, ctx_l, 1.0) / ctx_l
             tef_ed = tef_st + 1.0 / ctx_l
@@ -554,7 +555,7 @@ class DatasetMR(Dataset):
                 model_inputs["saliency_pos_labels"], model_inputs["saliency_neg_labels"] = \
                     self.get_saliency_labels_sub_as_query(meta["relevant_windows"][0], ctx_l)  # only one gt
                 model_inputs["saliency_pos_labels"] = [ random.choice(torch.where(model_inputs['saliency_scores'])[0].tolist()) ]
-
+        
         return dict(meta=meta, model_inputs=model_inputs)
 
     def get_saliency_labels_sub_as_query(self, gt_window, ctx_l, max_n=1):
@@ -652,8 +653,9 @@ class DatasetMR(Dataset):
         q_feat_path = join(self.q_feat_dir, f"{qid}.npz")
         try: 
             q_feat = np.load(q_feat_path)[self.q_feat_type].astype(np.float32)
-        except:
+        except Exception as e:
             q_feat = np.zeros((10, self.q_feat_dim)).astype(np.float32)
+            assert False, f'{e}'
             logger.info(f"Something wrong when loading the query feature {q_feat_path}.")
 
         if self.q_feat_type == "last_hidden_state":
@@ -662,6 +664,7 @@ class DatasetMR(Dataset):
         if self.normalize_t:
             q_feat = l2_normalize_np_array(q_feat)
         if self.txt_drop_ratio > 0:
+            assert False, 'should not be'
             q_feat = self.random_drop_rows(q_feat)
         return torch.from_numpy(q_feat)  # (D, ) or (Lq, D)
 
@@ -684,6 +687,7 @@ class DatasetMR(Dataset):
                 _feat = self.vid_cache[feat_type][vid]
             else:
                 _feat_path = join(_feat_dir, f"{vid}.npz")
+                #assert False, f'[debug] _feat_path: {_feat_path}'
                 _feat = np.load(_feat_path)["features"].astype(np.float32)
                 # _feat = np.load(_feat_path)["features"][:self.max_v_l].astype(np.float32)
                 if self.normalize_v:
@@ -1076,10 +1080,14 @@ def prepare_batch_inputs_mr(batched_model_inputs, device, non_blocking=False):
         src_vid_mask=batched_model_inputs["video_feat"][1].to(device, non_blocking=non_blocking),
     )
     targets = {}
-    targets['timestamp'] = batched_model_inputs["timestamp"][0].to(device, non_blocking=non_blocking)
-    targets['timestamp_mask'] = batched_model_inputs["timestamp"][1].to(device, non_blocking=non_blocking)
-    targets['timestamp_window'] = batched_model_inputs["timestamp_window"][0].to(device, non_blocking=non_blocking)
-    targets['span_labels_nn'] = batched_model_inputs["span_labels_nn"][0].to(device, non_blocking=non_blocking)
+    if 'timestamp' in batched_model_inputs:
+        targets['timestamp'] = batched_model_inputs["timestamp"][0].to(device, non_blocking=non_blocking)
+    if 'timestamp_mask' in batched_model_inputs:
+        targets['timestamp_mask'] = batched_model_inputs["timestamp"][1].to(device, non_blocking=non_blocking)
+    if 'timestamp_window' in batched_model_inputs:
+        targets['timestamp_window'] = batched_model_inputs["timestamp_window"][0].to(device, non_blocking=non_blocking)
+    if 'span_labels_nn' in batched_model_inputs:
+        targets['span_labels_nn'] = batched_model_inputs["span_labels_nn"][0].to(device, non_blocking=non_blocking)
 
     if 'saliency_scores' in batched_model_inputs.keys():
         targets['saliency_scores'] = batched_model_inputs["saliency_scores"][0].to(device, non_blocking=non_blocking)
